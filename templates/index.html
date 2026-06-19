@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelcomp Expert - Vocal Dynamics Engine</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#1e1e1e;color:#fff;min-height:100vh}
+        .container{display:grid;grid-template-columns:360px 1fr;grid-template-rows:1fr auto;height:100vh;gap:10px;padding:10px}
+        .sidebar{background:#2b2b2b;border-radius:8px;padding:20px;overflow-y:auto}
+        .main-content{background:#2b2b2b;border-radius:8px;padding:20px;overflow-y:auto}
+        .status-bar{grid-column:1/-1;background:#2b2b2b;border-radius:8px;padding:15px 20px;display:flex;align-items:center;gap:20px}
+        h1{font-size:24px;font-weight:bold;margin-bottom:5px;color:#ff9f43}h2{font-size:14px;color:#888;margin-bottom:20px}
+        .section{margin-bottom:20px}.section-title{font-size:11px;font-weight:bold;text-transform:uppercase;color:#ff9f43;margin-bottom:10px;letter-spacing:1px}
+        .file-info{background:#1e1e1e;padding:10px;border-radius:6px;margin-bottom:10px;font-size:12px}
+        .btn{background:#ff9f43;color:#000;border:none;padding:10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold;width:100%;margin-bottom:8px}
+        .btn:hover{background:#ffb067}.btn:disabled{background:#555;cursor:not-allowed}
+        .btn-large{padding:15px;font-size:16px;margin:15px 0}
+        select,input[type="range"]{width:100%;padding:6px;background:#1e1e1e;border:1px solid:#3b3b3b;border-radius:4px;color:#fff;font-size:12px}
+        .slider-container{margin-bottom:10px}.slider-label{display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px}
+        .slider-value{color:#ff9f43;font-weight:bold}
+        input[type="range"]{-webkit-appearance:none;height:4px;background:#3b3b3b;outline:none;border-radius:2px;padding:0}
+        input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:#ff9f43;cursor:pointer;border-radius:50%}
+        .visualization{background:#1e1e1e;border-radius:8px;padding:15px;margin-bottom:15px}
+        .visualization img{width:100%;border-radius:4px}.visualization-title{font-size:11px;font-weight:bold;text-transform:uppercase;color:#ff9f43;margin-bottom:8px}
+        .status-message{flex:1;font-size:13px}.loudness-display{font-size:13px;font-weight:bold;color:#ff9f43}
+        .progress-bar{width:150px;height:6px;background:#3b3b3b;border-radius:3px;overflow:hidden}
+        .progress-fill{height:100%;background:#ff9f43;width:0%;transition:width 0.3s}.hidden{display:none}
+        .alert{padding:10px;border-radius:4px;margin-top:10px;font-size:11px}.alert-success{background:#1e4620;color:#6bcf7f}.alert-error{background:#461e1e;color:#ff6b6b}
+        .checkbox-container{display:flex;align-items:center;margin-bottom:8px}
+        .checkbox-container input{width:14px;height:14px;margin-right:6px;cursor:pointer}.checkbox-container label{font-size:11px;cursor:pointer}
+        .expert-badge{background:#ff9f43;color:#000;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:bold;margin-left:5px}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>INTELCOMP <span class="expert-badge">EXPERT</span></h1>
+            <h2>Professional Vocal DSP</h2>
+            <div class="section">
+                <div class="section-title">Input</div>
+                <div class="file-info" id="fileInfo">No file selected</div>
+                <input type="file" id="fileInput" accept="audio/*" style="display:none">
+                <button class="btn" onclick="document.getElementById('fileInput').click()">Load Audio</button>
+                <button class="btn" id="downloadBtn" onclick="downloadProcessed()" disabled>Download WAV</button>
+            </div>
+            <div class="section">
+                <div class="section-title">Preset</div>
+                <select id="presetSelect">{% for p in presets %}<option value="{{ p }}">{{ p }}</option>{% endfor %}</select>
+            </div>
+            <div class="section">
+                <div class="section-title">Pre-Processing</div>
+                <div class="checkbox-container"><input type="checkbox" id="deesserEnabled" checked><label for="deesserEnabled">Context De-Esser</label></div>
+                <div class="slider-container"><div class="slider-label"><span>Sensitivity</span><span class="slider-value" id="deesserSensValue">2.00</span></div><input type="range" id="deesserSens" min="0.5" max="8" step="0.1" value="2"></div>
+                <div class="checkbox-container"><input type="checkbox" id="debreatherEnabled" checked><label for="debreatherEnabled">Smart De-Breather</label></div>
+                <div class="checkbox-container"><input type="checkbox" id="resonanceEnabled" checked><label for="resonanceEnabled">Resonance Suppressor</label></div>
+                <div class="slider-container"><div class="slider-label"><span>Resonance Depth</span><span class="slider-value" id="resonanceSensValue">0.60</span></div><input type="range" id="resonanceSens" min="0" max="1" step="0.05" value="0.6"></div>
+            </div>
+            <div class="section">
+                <div class="section-title">Tonal Enhancement</div>
+                <div class="checkbox-container"><input type="checkbox" id="exciterEnabled" checked><label for="exciterEnabled">Harmonic Exciter</label></div>
+                <div class="slider-container"><div class="slider-label"><span>Exciter Amount</span><span class="slider-value" id="exciterAmountValue">0.15</span></div><input type="range" id="exciterAmount" min="0" max="0.5" step="0.01" value="0.15"></div>
+            </div>
+            <div class="section">
+                <div class="section-title">Psychoacoustic Glue</div>
+                <div class="checkbox-container"><input type="checkbox" id="psychoEnabled" checked><label for="psychoEnabled">K-Weighted M/S Glue</label></div>
+                <div class="slider-container"><div class="slider-label"><span>Sensitivity</span><span class="slider-value" id="psychoSensValue">2.00</span></div><input type="range" id="psychoSens" min="0.5" max="6" step="0.1" value="2"></div>
+                <div class="slider-container"><div class="slider-label"><span>Ratio</span><span class="slider-value" id="psychoRatioValue">2.00</span></div><input type="range" id="psychoRatio" min="1" max="6" step="0.1" value="2"></div>
+                <div class="slider-container"><div class="slider-label"><span>Masking</span><span class="slider-value" id="psychoMaskValue">0.50</span></div><input type="range" id="psychoMask" min="0" max="1" step="0.05" value="0.5"></div>
+            </div>
+            <div class="section">
+                <div class="section-title">Output</div>
+                <div class="slider-container"><div class="slider-label"><span>Target LUFS</span><span class="slider-value" id="lufsValue">-14.00</span></div><input type="range" id="lufs" min="-20" max="-8" step="0.1" value="-14"></div>
+                <div class="slider-container"><div class="slider-label"><span>True Peak Limit</span><span class="slider-value" id="tpValue">-1.00</span></div><input type="range" id="tp" min="-3" max="0" step="0.1" value="-1"></div>
+            </div>
+            <button class="btn btn-large" id="processBtn" onclick="processAudio()">PROCESS EXPERT CHAIN</button>
+            <div id="alertBox" class="hidden"></div>
+        </div>
+        <div class="main-content">
+            <div class="visualization"><div class="visualization-title">Waveform</div><img id="waveformImg" src="" alt=""></div>
+            <div class="visualization"><div class="visualization-title">Multiband Gain Reduction</div><img id="grImg" src="" alt=""></div>
+        </div>
+        <div class="status-bar">
+            <div class="status-message" id="statusMessage">Ready</div>
+            <div class="loudness-display" id="loudnessDisplay"></div>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
+    </div>
+    <script>
+        const P = {{ presets_data | tojson }};
+        const S = {'deesserSens':'deesserSensValue','resonanceSens':'resonanceSensValue','exciterAmount':'exciterAmountValue','psychoSens':'psychoSensValue','psychoRatio':'psychoRatioValue','psychoMask':'psychoMaskValue','lufs':'lufsValue','tp':'tpValue'};
+        Object.keys(S).forEach(id => {
+            const sl = document.getElementById(id), vd = document.getElementById(S[id]);
+            sl.addEventListener('input', () => vd.textContent = parseFloat(sl.value).toFixed(2));
+        });
+        function applyPreset(name) {
+            const p = P[name]; if(!p) return;
+            document.getElementById('deesserEnabled').checked = p.de_esser.enabled;
+            updateSlider('deesserSens', p.de_esser.sens);
+            document.getElementById('debreatherEnabled').checked = p.de_breather.enabled;
+            document.getElementById('resonanceEnabled').checked = p.resonance.enabled;
+            updateSlider('resonanceSens', p.resonance.sens);
+            document.getElementById('exciterEnabled').checked = p.exciter.enabled;
+            updateSlider('exciterAmount', p.exciter.amount);
+            document.getElementById('psychoEnabled').checked = p.psycho.enabled;
+            updateSlider('psychoSens', p.psycho.sens);
+            updateSlider('psychoRatio', p.psycho.ratio);
+            updateSlider('psychoMask', p.psycho.mask);
+            updateSlider('lufs', p.output.lufs);
+            updateSlider('tp', p.output.tp);
+        }
+        function updateSlider(id, val) { document.getElementById(id).value = val; document.getElementById(S[id]).textContent = parseFloat(val).toFixed(2); }
+        document.getElementById('presetSelect').addEventListener('change', e => applyPreset(e.target.value));
+        window.addEventListener('load', () => applyPreset(document.getElementById('presetSelect').value));
+        document.getElementById('fileInput').addEventListener('change', async e => {
+            const f = e.target.files[0]; if(!f) return;
+            const fd = new FormData(); fd.append('file', f);
+            document.getElementById('statusMessage').textContent = 'Uploading...';
+            try {
+                const r = await fetch('/upload', {method:'POST', body:fd}); const d = await r.json();
+                if(d.success) {
+                    document.getElementById('fileInfo').innerHTML = `<strong>${d.filename}</strong><br>${d.duration} @ ${d.sample_rate}Hz`;
+                    document.getElementById('statusMessage').textContent = 'Loaded'; showAlert('success', 'Loaded!');
+                } else showAlert('error', d.error);
+            } catch(e) { showAlert('error', 'Upload failed'); }
+        });
+        async function processAudio() {
+            const btn = document.getElementById('processBtn'); btn.disabled = true; btn.textContent = 'PROCESSING...';
+            document.getElementById('statusMessage').textContent = 'Processing Expert Chain...'; document.getElementById('progressFill').style.width = '50%';
+            const params = {
+                preset: document.getElementById('presetSelect').value,
+                deesser_enabled: document.getElementById('deesserEnabled').checked, deesser_sens: parseFloat(document.getElementById('deesserSens').value),
+                debreather_enabled: document.getElementById('debreatherEnabled').checked,
+                resonance_enabled: document.getElementById('resonanceEnabled').checked, resonance_sens: parseFloat(document.getElementById('resonanceSens').value),
+                exciter_enabled: document.getElementById('exciterEnabled').checked, exciter_amount: parseFloat(document.getElementById('exciterAmount').value),
+                psycho_enabled: document.getElementById('psychoEnabled').checked, psycho_sens: parseFloat(document.getElementById('psychoSens').value),
+                psycho_ratio: parseFloat(document.getElementById('psychoRatio').value), psycho_mask: parseFloat(document.getElementById('psychoMask').value),
+                lufs: parseFloat(document.getElementById('lufs').value), tp: parseFloat(document.getElementById('tp').value)
+            };
+            try {
+                const r = await fetch('/process', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(params)});
+                const d = await r.json();
+                if(d.success) {
+                    document.getElementById('waveformImg').src = d.waveform; document.getElementById('grImg').src = d.gain_reduction;
+                    document.getElementById('loudnessDisplay').textContent = d.loudness; document.getElementById('downloadBtn').disabled = false;
+                    document.getElementById('statusMessage').textContent = 'Complete!'; document.getElementById('progressFill').style.width = '100%';
+                    showAlert('success', d.message);
+                } else { showAlert('error', d.error); document.getElementById('statusMessage').textContent = 'Error'; }
+            } catch(e) { showAlert('error', 'Failed'); document.getElementById('statusMessage').textContent = 'Error'; }
+            finally { btn.disabled = false; btn.textContent = 'PROCESS EXPERT CHAIN'; }
+        }
+        function downloadProcessed() { window.location.href = '/download'; }
+        function showAlert(type, msg) {
+            const ab = document.getElementById('alertBox'); ab.className = `alert alert-${type}`; ab.textContent = msg; ab.classList.remove('hidden');
+            setTimeout(() => ab.classList.add('hidden'), 4000);
+        }
+    </script>
+</body>
+</html>
